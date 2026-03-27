@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>黑閃電特斯拉實驗室 - 庫存系統</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#1a1a2e;color:#fff;min-height:100vh}
+.header{background:linear-gradient(135deg,#16213e,#0f3460);padding:20px;text-align:center;border-bottom:3px solid #f39c12}
+.header h1{font-size:24px;color:#f39c12}
+.nav{display:flex;justify-content:center;gap:10px;margin-top:15px;flex-wrap:wrap}
+.nav button{background:#0f3460;border:2px solid #f39c12;color:#fff;padding:10px 20px;border-radius:8px;cursor:pointer;font-size:14px}
+.nav button.active,.nav button:hover{background:#f39c12;color:#000}
+.container{max-width:1200px;margin:0 auto;padding:20px}
+.section{display:none}
+.section.active{display:block}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:15px;margin-bottom:20px}
+.stat-card{background:#16213e;padding:20px;border-radius:12px;text-align:center;border-left:4px solid #f39c12}
+.stat-card h3{font-size:28px;color:#f39c12}
+.stat-card p{color:#aaa;margin-top:5px}
+.card{background:#16213e;padding:20px;border-radius:12px;margin-bottom:20px}
+.card h2{color:#f39c12;margin-bottom:15px;font-size:18px}
+.form-row{display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.form-row input,.form-row select{flex:1;min-width:120px;padding:12px;border-radius:8px;border:none;background:#0f3460;color:#fff;font-size:14px}
+.btn{background:#f39c12;color:#000;border:none;padding:12px 24px;border-radius:8px;cursor:pointer;font-weight:bold;font-size:14px}
+.btn:hover{background:#e67e22}
+.btn-danger{background:#e74c3c}
+.btn-danger:hover{background:#c0392b}
+.btn-secondary{background:#0f3460;color:#fff;border:2px solid #f39c12}
+table{width:100%;border-collapse:collapse;margin-top:15px}
+th,td{padding:12px;text-align:left;border-bottom:1px solid #0f3460}
+th{background:#0f3460;color:#f39c12}
+tr:hover{background:#0f3460}
+.low-stock{color:#e74c3c;font-weight:bold}
+.search-box{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+.search-box input,.search-box select{padding:12px;border-radius:8px;border:none;background:#16213e;color:#fff;font-size:14px}
+.search-box input{flex:1;min-width:200px}
+.modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);justify-content:center;align-items:center;z-index:1000;overflow:auto;padding:20px}
+.modal.show{display:flex}
+.modal-content{background:#16213e;padding:30px;border-radius:12px;width:90%;max-width:500px}
+.modal-content h2{color:#f39c12;margin-bottom:20px}
+.modal-content input,.modal-content select{width:100%;padding:12px;margin-bottom:15px;border-radius:8px;border:none;background:#0f3460;color:#fff}
+.modal-buttons{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+.history-item{padding:10px;border-bottom:1px solid #0f3460;font-size:14px}
+.history-item .time{color:#888;font-size:12px}
+.history-item .plus{color:#2ecc71}
+.history-item .minus{color:#e74c3c}
+.label-options{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+.label-option{background:#0f3460;border:2px solid #f39c12;padding:15px;border-radius:8px;cursor:pointer;text-align:center;flex:1;min-width:100px}
+.label-option.selected{background:#f39c12;color:#000}
+.label-option h4{margin-bottom:5px}
+.label-preview{display:grid;gap:10px;margin-top:20px}
+.label-preview.small{grid-template-columns:repeat(3,1fr)}
+.label-preview.medium{grid-template-columns:repeat(2,1fr)}
+.label-preview.large{grid-template-columns:repeat(1,1fr)}
+.label-item{background:#fff;color:#000;padding:10px;border-radius:4px;text-align:center;border:1px dashed #ccc}
+.label-item .qr{margin:0 auto 5px;display:flex;justify-content:center}
+.label-item .code{font-weight:bold;font-size:12px}
+.label-item .name{font-size:10px;color:#666}
+.quick-adjust{display:flex;align-items:center;gap:10px;margin-top:15px}
+.quick-adjust button{width:50px;height:50px;font-size:24px;border-radius:50%;border:none;cursor:pointer}
+.quick-adjust .minus{background:#e74c3c;color:#fff}
+.quick-adjust .plus{background:#2ecc71;color:#fff}
+.quick-adjust .qty{font-size:36px;min-width:80px;text-align:center}
+@media print{
+body{background:#fff!important;color:#000!important}
+.header,.nav,.no-print{display:none!important}
+.container{padding:0!important;max-width:100%!important}
+.section{display:none!important}
+#printSection{display:block!important}
+.label-item{border:1px solid #000;break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<div class="header">
+<h1>⚡ 黑閃電特斯拉實驗室</h1>
+<p>庫存管理系統</p>
+<div class="nav">
+<button onclick="showSection('dashboard')" class="active" id="nav-dashboard">儀表板</button>
+<button onclick="showSection('inventory')" id="nav-inventory">庫存管理</button>
+<button onclick="showSection('labels')" id="nav-labels">列印標籤</button>
+<button onclick="showSection('history')" id="nav-history">歷史記錄</button>
+</div>
+</div>
+<div class="container">
+<div class="section active" id="dashboard">
+<div class="stats">
+<div class="stat-card"><h3 id="totalItems">0</h3><p>總品項</p></div>
+<div class="stat-card"><h3 id="totalStock">0</h3><p>總庫存</p></div>
+<div class="stat-card"><h3 id="lowStock">0</h3><p>低庫存警示</p></div>
+</div>
+<div class="card">
+<h2>⚠️ 低庫存警示（少於5件）</h2>
+<div id="lowStockList"></div>
+</div>
+</div>
+<div class="section" id="inventory">
+<div class="card">
+<h2>➕ 新增品項</h2>
+<div class="form-row">
+<input type="text" id="newCode" placeholder="料號 (例: BRK-001)">
+<input type="text" id="newName" placeholder="品項名稱">
+<select id="newCategory">
+<option value="BRK">BRK 煞車系統</option>
+<option value="SUS">SUS 懸吊系統</option>
+<option value="WHL">WHL 輪胎輪圈</option>
+<option value="ENG">ENG 引擎零件</option>
+<option value="EXT">EXT 外觀套件</option>
+<option value="INT">INT 內裝配件</option>
+<option value="ELE">ELE 電子設備</option>
+</select>
+<input type="number" id="newQty" placeholder="數量" min="0">
+<button class="btn" onclick="addItem()">新增</button>
+</div>
+</div>
+<div class="card">
+<h2>📦 庫存列表</h2>
+<div class="search-box">
+<input type="text" id="searchInput" placeholder="🔍 搜尋料號或名稱..." oninput="renderInventory()">
+<select id="filterCategory" onchange="renderInventory()">
+<option value="">全部類別</option>
+<option value="BRK">BRK 煞車系統</option>
+<option value="SUS">SUS 懸吊系統</option>
+<option value="WHL">WHL 輪胎輪圈</option>
+<option value="ENG">ENG 引擎零件</option>
+<option value="EXT">EXT 外觀套件</option>
+<option value="INT">INT 內裝配件</option>
+<option value="ELE">ELE 電子設備</option>
+</select>
+<button class="btn" onclick="exportCSV()">📄 匯出 CSV</button>
+</div>
+<table>
+<thead><tr><th>料號</th><th>名稱</th><th>類別</th><th>庫存</th><th>操作</th></tr></thead>
+<tbody id="inventoryTable"></tbody>
+</table>
+</div>
+</div>
+<div class="section" id="labels">
+<div class="card">
+<h2>🏷️ 列印 QR Code 標籤</h2>
+<p style="color:#aaa;margin-bottom:15px">選擇要列印的品項，然後選擇標籤大小</p>
+<div class="form-row no-print">
+<select id="labelItem" onchange="updateLabelPreview()">
+<option value="">-- 選擇品項 --</option>
+</select>
+<input type="number" id="labelQty" value="1" min="1" max="20" placeholder="列印數量" onchange="updateLabelPreview()">
+</div>
+<div class="label-options no-print">
+<div class="label-option selected" onclick="selectLabelSize('small')">
+<h4>小標籤</h4>
+<p>3x7 cm</p>
+</div>
+<div class="label-option" onclick="selectLabelSize('medium')">
+<h4>中標籤</h4>
+<p>5x5 cm</p>
+</div>
+<div class="label-option" onclick="selectLabelSize('large')">
+<h4>大標籤</h4>
+<p>7x10 cm</p>
+</div>
+</div>
+<button class="btn no-print" onclick="printLabels()">🖨️ 列印標籤</button>
+<div id="labelPreview" class="label-preview small"></div>
+</div>
+</div>
+<div class="section" id="history">
+<div class="card">
+<h2>📜 最近異動記錄</h2>
+<div id="historyList"></div>
+</div>
+</div>
+<div id="printSection" style="display:none"></div>
+</div>
+
+<div class="modal" id="editModal">
+<div class="modal-content">
+<h2>📝 調整庫存</h2>
+<input type="text" id="editCode" readonly>
+<input type="text" id="editName" placeholder="品項名稱">
+<p style="margin-bottom:10px;color:#aaa">快速調整：</p>
+<div class="quick-adjust">
+<button class="minus" onclick="quickAdjust(-1)">−</button>
+<div class="qty" id="editQtyDisplay">0</div>
+<button class="plus" onclick="quickAdjust(1)">+</button>
+</div>
+<input type="number" id="editAdjust" placeholder="或輸入調整數量 (+入庫 / -出庫)" style="margin-top:15px">
+<div class="modal-buttons">
+<button class="btn btn-danger" onclick="deleteItem()">🗑️ 刪除</button>
+<button class="btn btn-secondary" onclick="closeModal()">取消</button>
+<button class="btn" onclick="saveEdit()">💾 儲存</button>
+</div>
+</div>
+</div>
+
+<div class="modal" id="scanModal">
+<div class="modal-content">
+<h2>📱 品項資訊</h2>
+<div id="scanInfo"></div>
+<div class="quick-adjust">
+<button class="minus" onclick="scanAdjust(-1)">−</button>
+<div class="qty" id="scanQty">0</div>
+<button class="plus" onclick="scanAdjust(1)">+</button>
+</div>
+<div class="modal-buttons" style="margin-top:20px">
+<button class="btn" onclick="closeScanModal()">關閉</button>
+<button class="btn" onclick="saveScanAdjust()">💾 儲存變更</button>
+</div>
+</div>
+</div>
+
+<script>
+let inventory=JSON.parse(localStorage.getItem('bltlInventory'))||[];
+let history=JSON.parse(localStorage.getItem('bltlHistory'))||[];
+let editingIndex=-1;
+let scanIndex=-1;
+let labelSize='small';
+let tempQtyChange=0;
+let scanTempChange=0;
+
+function saveData(){
+localStorage.setItem('bltlInventory',JSON.stringify(inventory));
+localStorage.setItem('bltlHistory',JSON.stringify(history));
+}
+
+function showSection(id){
+document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
+document.getElementById(id).classList.add('active');
+document.getElementById('nav-'+id).classList.add('active');
+if(id==='dashboard')updateDashboard();
+if(id==='history')renderHistory();
+if(id==='labels')updateLabelDropdown();
+}
+
+function addItem(){
+const code=document.getElementById('newCode').value.trim().toUpperCase();
+const name=document.getElementById('newName').value.trim();
+const category=document.getElementById('newCategory').value;
+const qty=parseInt(document.getElementById('newQty').value)||0;
+if(!code||!name){alert('請填寫料號和名稱');return}
+if(inventory.find(i=>i.code===code)){alert('料號已存在');return}
+inventory.push({code,name,category,qty});
+addHistory(code,name,qty,'新增');
+saveData();
+renderInventory();
+document.getElementById('newCode').value='';
+document.getElementById('newName').value='';
+document.getElementById('newQty').value='';
+alert('✅ 新增成功！');
+}
+
+function addHistory(code,name,change,type){
+history.unshift({code,name,change,type,time:new Date().toLocaleString('zh-TW')});
+if(history.length>100)history.pop();
+saveData();
+}
+
+function renderInventory(){
+const search=document.getElementById('searchInput').value.toLowerCase();
+const filter=document.getElementById('filterCategory').value;
+const tbody=document.getElementById('inventoryTable');
+const filtered=inventory.filter(item=>{
+const matchSearch=item.code.toLowerCase().includes(search)||item.name.toLowerCase().includes(search);
+const matchCategory=!filter||item.category===filter;
+return matchSearch&&matchCategory;
+});
+tbody.innerHTML=filtered.map((item,idx)=>{
+const realIdx=inventory.indexOf(item);
+const lowClass=item.qty<5?'low-stock':'';
+return`<tr>
+<td>${item.code}</td>
+<td>${item.name}</td>
+<td>${item.category}</td>
+<td class="${lowClass}">${item.qty}</td>
+<td><button class="btn" onclick="openEdit(${realIdx})">編輯</button></td>
+</tr>`;
+}).join('');
+}
+
+function openEdit(idx){
+editingIndex=idx;
+tempQtyChange=0;
+const item=inventory[idx];
+document.getElementById('editCode').value=item.code;
+document.getElementById('editName').value=item.name;
+document.getElementById('editQtyDisplay').textContent=item.qty;
+document.getElementById('editAdjust').value='';
+document.getElementById('editModal').classList.add('show');
+}
+
+function quickAdjust(n){
+tempQtyChange+=n;
+const item=inventory[editingIndex];
+const newQty=Math.max(0,item.qty+tempQtyChange);
+document.getElementById('editQtyDisplay').textContent=newQty;
+}
+
+function closeModal(){
+document.getElementById('editModal').classList.remove('show');
+editingIndex=-1;
+tempQtyChange=0;
+}
+
+function saveEdit(){
+const item=inventory[editingIndex];
+const newName=document.getElementById('editName').value.trim();
+const inputAdjust=parseInt(document.getElementById('editAdjust').value)||0;
+const adjust=inputAdjust||tempQtyChange;
+if(newName)item.name=newName;
+if(adjust!==0){
+item.qty+=adjust;
+if(item.qty<0)item.qty=0;
+addHistory(item.code,item.name,adjust,adjust>0?'入庫':'出庫');
+}
+saveData();
+renderInventory();
+closeModal();
+alert('✅ 已儲存！');
+}
+
+function deleteItem(){
+if(!confirm('確定刪除此品項？'))return;
+const item=inventory[editingIndex];
+addHistory(item.code,item.name,-item.qty,'刪除');
+inventory.splice(editingIndex,1);
+saveData();
+renderInventory();
+closeModal();
+alert('🗑️ 已刪除');
+}
+
+function updateDashboard(){
+document.getElementById('totalItems').textContent=inventory.length;
+document.getElementById('totalStock').textContent=inventory.reduce((a,b)=>a+b.qty,0);
+const low=inventory.filter(i=>i.qty<5);
+document.getElementById('lowStock').textContent=low.length;
+document.getElementById('lowStockList').innerHTML=low.length?
+low.map(i=>`<div style="padding:8px;border-bottom:1px solid #0f3460">
+<strong>${i.code}</strong> ${i.name} - <span class="low-stock">${i.qty}件</span>
+</div>`).join(''):'<p style="color:#2ecc71">✅ 目前沒有低庫存品項</p>';
+}
+
+function renderHistory(){
+document.getElementById('historyList').innerHTML=history.length?
+history.map(h=>`<div class="history-item">
+<span class="time">${h.time}</span><br>
+<strong>${h.code}</strong> ${h.name}<br>
+${h.type}: <span class="${h.change>0?'plus':'minus'}">${h.change>0?'+':''}${h.change}</span>
+</div>`).join(''):'<p>尚無記錄</p>';
+}
+
+function exportCSV(){
+if(!inventory.length){alert('沒有資料可匯出');return}
+let csv='料號,名稱,類別,庫存\n';
+inventory.forEach(i=>{csv+=`${i.code},${i.name},${i.category},${i.qty}\n`});
+const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
+const url=URL.createObjectURL(blob);
+const a=document.createElement('a');
+a.href=url;
+a.download='庫存清單_'+new Date().toLocaleDateString('zh-TW')+'.csv';
+a.click();
+}
+
+function updateLabelDropdown(){
+const select=document.getElementById('labelItem');
+select.innerHTML='<option value="">-- 選擇品項 --</option>'+
+inventory.map((item,idx)=>`<option value="${idx}">${item.code} - ${item.name}</option>`).join('');
+updateLabelPreview();
+}
+
+function selectLabelSize(size){
+labelSize=size;
+document.querySelectorAll('.label-option').forEach(el=>el.classList.remove('selected'));
+event.target.closest('.label-option').classList.add('selected');
+updateLabelPreview();
+}
+
+function updateLabelPreview(){
+const select=document.getElementById('labelItem');
+const qty=parseInt(document.getElementById('labelQty').value)||1;
+const preview=document.getElementById('labelPreview');
+preview.className='label-preview '+labelSize;
+if(select.value===''){
+preview.innerHTML='<p style="color:#aaa;grid-column:1/-1">請選擇品項</p>';
+return;
+}
+const item=inventory[parseInt(select.value)];
+const baseUrl=window.location.href.split('?')[0];
+const qrUrl=baseUrl+'?item='+encodeURIComponent(item.code);
+let html='';
+for(let i=0;i<qty;i++){
+html+=`<div class="label-item">
+<div class="qr" id="qr_${i}"></div>
+<div class="code">${item.code}</div>
+<div class="name">${item.name}</div>
+</div>`;
+}
+preview.innerHTML=html;
+setTimeout(()=>{
+for(let i=0;i<qty;i++){
+const qrContainer=document.getElementById('qr_'+i);
+if(qrContainer){
+qrContainer.innerHTML='';
+const size=labelSize==='small'?60:labelSize==='medium'?80:100;
+new QRCode(qrContainer,{text:qrUrl,width:size,height:size,margin:0});
+}
+}
+},100);
+}
+
+function printLabels(){
+const select=document.getElementById('labelItem');
+if(select.value===''){alert('請選擇品項');return}
+const qty=parseInt(document.getElementById('labelQty').value)||1;
+const item=inventory[parseInt(select.value)];
+const baseUrl=window.location.href.split('?')[0];
+const qrUrl=baseUrl+'?item='+encodeURIComponent(item.code);
+const printSection=document.getElementById('printSection');
+let html=`<div class="label-preview ${labelSize}">`;
+for(let i=0;i<qty;i++){
+html+=`<div class="label-item">
+<div class="qr" id="print_qr_${i}"></div>
+<div class="code">${item.code}</div>
+<div class="name">${item.name}</div>
+</div>`;
+}
+html+='</div>';
+printSection.innerHTML=html;
+printSection.style.display='block';
+setTimeout(()=>{
+for(let i=0;i<qty;i++){
+const qrContainer=document.getElementById('print_qr_'+i);
+if(qrContainer){
+qrContainer.innerHTML='';
+const size=labelSize==='small'?60:labelSize==='medium'?80:100;
+new QRCode(qrContainer,{text:qrUrl,width:size,height:size,margin:0});
+}
+}
+setTimeout(()=>window.print(),200);
+},100);
+}
+
+function checkUrlParam(){
+const params=new URLSearchParams(window.location.search);
+const itemCode=params.get('item');
+if(itemCode){
+const idx=inventory.findIndex(i=>i.code===itemCode);
+if(idx!==-1){
+openScanModal(idx);
+}else{
+alert('找不到此品項：'+itemCode);
+}
+window.history.replaceState({},document.title,window.location.pathname);
+}
+}
+
+function openScanModal(idx){
+scanIndex=idx;
+scanTempChange=0;
+const item=inventory[idx];
+document.getElementById('scanInfo').innerHTML=`
+<p><strong>料號：</strong>${item.code}</p>
+<p><strong>名稱：</strong>${item.name}</p>
+<p><strong>類別：</strong>${item.category}</p>
+<p style="margin-top:10px;color:#aaa">目前庫存：</p>
+`;
+document.getElementById('scanQty').textContent=item.qty;
+document.getElementById('scanModal').classList.add('show');
+}
+
+function scanAdjust(n){
+scanTempChange+=n;
+const item=inventory[scanIndex];
+const newQty=Math.max(0,item.qty+scanTempChange);
+document.getElementById('scanQty').textContent=newQty;
+}
+
+function closeScanModal(){
+document.getElementById('scanModal').classList.remove('show');
+scanIndex=-1;
+scanTempChange=0;
+}
+
+function saveScanAdjust(){
+if(scanTempChange===0){
+closeScanModal();
+return;
+}
+const item=inventory[scanIndex];
+item.qty+=scanTempChange;
+if(item.qty<0)item.qty=0;
+addHistory(item.code,item.name,scanTempChange,scanTempChange>0?'入庫':'出庫');
+saveData();
+alert('✅ 已更新！目前庫存：'+item.qty);
+closeScanModal();
+renderInventory();
+updateDashboard();
+}
+
+renderInventory();
+updateDashboard();
+checkUrlParam();
+</script>
+</body>
+</html>
