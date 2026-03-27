@@ -212,6 +212,9 @@ body{background:#fff!important;color:#000!important}
 </div>
 
 <script>
+// ===== 固定網址（GitHub Pages）=====
+const BASE_URL = 'https://pinkpeggys.github.io/inventory/inventory.html';
+
 let inventory=JSON.parse(localStorage.getItem('bltlInventory'))||[];
 let history=JSON.parse(localStorage.getItem('bltlHistory'))||[];
 let editingIndex=-1;
@@ -388,8 +391,8 @@ preview.innerHTML='<p style="color:#aaa;grid-column:1/-1">請選擇品項</p>';
 return;
 }
 const item=inventory[parseInt(select.value)];
-const baseUrl=window.location.href.split('?')[0];
-const qrUrl=baseUrl+'?item='+encodeURIComponent(item.code);
+// 使用固定的 GitHub Pages 網址
+const qrUrl=BASE_URL+'?item='+encodeURIComponent(item.code);
 let html='';
 for(let i=0;i<qty;i++){
 html+=`<div class="label-item">
@@ -416,8 +419,8 @@ const select=document.getElementById('labelItem');
 if(select.value===''){alert('請選擇品項');return}
 const qty=parseInt(document.getElementById('labelQty').value)||1;
 const item=inventory[parseInt(select.value)];
-const baseUrl=window.location.href.split('?')[0];
-const qrUrl=baseUrl+'?item='+encodeURIComponent(item.code);
+// 使用固定的 GitHub Pages 網址
+const qrUrl=BASE_URL+'?item='+encodeURIComponent(item.code);
 const printSection=document.getElementById('printSection');
 let html=`<div class="label-preview ${labelSize}">`;
 for(let i=0;i<qty;i++){
